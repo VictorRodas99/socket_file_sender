@@ -32,6 +32,7 @@ class Client():
         print("..: go back to the previous path")
         print("df: download a file (df -i <index of file>)")
         print("filter: <filter -n name of file>")
+        print("getsize: <getsize -i index of file>")
         print("help: shows all the commands")
         print("end: to kill the server")
 
@@ -179,6 +180,9 @@ class Client():
                 print(msg_normal_received)
             else:
                 self.show_d(msg_normal_received)
+
+        elif "getsize" in action:
+            print(msg_normal_received)
 
         else:
             print("Command not found!")
