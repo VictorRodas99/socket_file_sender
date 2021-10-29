@@ -1,7 +1,8 @@
 import socket
 import pickle
-import os
+import math
 import sys
+import os
 
 
 # IP = '192.168.0.102'
@@ -9,8 +10,16 @@ IP = 'localhost'
 PORT = 3000
 
 def transform(data):
-    kb, by = 0.9765625, 1000
-    return round(data * kb / by, 2)
+   if data == 0:
+       return "0B"
+
+   size_name = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
+
+   i = int(math.floor(math.log(data, 1024)))
+   p = math.pow(1024, i)
+   s = round(data / p, 2)
+   return "%s %s" % (s, size_name[i])
+
 
 class Server():
     def __init__(self, ip, port):
@@ -113,6 +122,32 @@ class Server():
 
             os.chdir("../")
 
+    def get_size(self, index_file, sock):
+        files = os.listdir("./")
+
+        for i in range(0, len(files)):
+
+            if index_file == (i+1):
+                file = files[i]
+
+                if os.path.isfile(file):
+                    size = os.path.getsize(file)
+                    size_format = transform(size)
+
+                    self.error(f'{index_file}: {file} - {size_format}', sock)
+                else:
+                    folder = file
+                    os.chdir(f"./{folder}")
+                    files_sub = os.listdir("./")
+                    size = 0
+                    for i in range(0, len(files_sub)):
+                        f_ = files_sub[i]
+                        size = os.path.getsize(f_) + size
+
+                    total_size = transform(size)
+                    self.error(f'{index_file}: {folder} - {total_size}', sock)
+                    os.chdir("../")
+
 
 
     def error(self, msg, sock):
@@ -124,6 +159,7 @@ class Server():
                 sock.sendall(msg.encode())
         except (ConnectionResetError, ConnectionAbortedError) as e:
             pass
+
 
     def main(self, sock):
         actual = os.listdir("./")
@@ -137,7 +173,7 @@ class Server():
             res = os.path.isfile(file)
 
             if res:
-                self.data.append(f"{i+1} {file} - ({transform(size)} KB)")
+                self.data.append(f"{i+1} {file} - ({transform(size)})")
             else:
                 self.data.append(f"{i+1} {file}/")
 
@@ -150,6 +186,7 @@ class Server():
         if confirm == 'Received':
             sock.sendall(code_data)
             self.data = []
+
 
     def filter(self, f_name, sock):
         files = os.listdir("./")
@@ -164,7 +201,7 @@ class Server():
                 res = os.path.isfile(file)
 
                 if res:
-                    self.data.append(f"{i+1} {file} - ({transform(size)} KB)")
+                    self.data.append(f"{i+1} {file} - ({transform(size)})")
                 else:
                     self.data.append(f"{i+1} {file}/")
 
@@ -225,6 +262,15 @@ class Server():
                 start = action.index("-n")+3
                 f_name = action[start::]
                 self.filter(f_name, sock)
+            except ValueError:
+                self.error('Command Error!', sock)
+
+        elif "getsize" in action:
+            try:
+                start = action.index("-i")+3
+                index_file = int(action[start::])
+                self.get_size(index_file, sock)
+
             except ValueError:
                 self.error('Command Error!', sock)
 
